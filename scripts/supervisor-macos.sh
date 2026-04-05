@@ -21,6 +21,11 @@ build_env_dict() {
     dict+="${indent}<key>${var}</key>\n${indent}<string>${val}</string>\n"
   done
 
+  # Source CTI_HTTPS_PROXY from config.env if set
+  local https_proxy
+  https_proxy=$(grep "^CTI_HTTPS_PROXY=" "$CTI_HOME/config.env" 2>/dev/null | head -1 | cut -d= -f2- | tr -d "'" | tr -d '"' || true)
+  [ -n "$https_proxy" ] && dict+="${indent}<key>CTI_HTTPS_PROXY</key>\n${indent}<string>${https_proxy}</string>\n"
+
   # Forward CTI_* vars
   while IFS='=' read -r name val; do
     case "$name" in CTI_*)

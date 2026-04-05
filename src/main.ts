@@ -7,11 +7,37 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import { fileURLToPath } from 'node:url';
+import { dirname } from 'node:path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+// Load proxy config directly from config.env BEFORE any other imports
+const configEnvPath = path.join(process.env.CTI_HOME || path.join(process.env.HOME, '.claude-to-im'), 'config.env');
+try {
+  const configContent = fs.readFileSync(configEnvPath, 'utf-8');
+  const proxyMatch = configContent.match(/^CTI_HTTPS_PROXY=(.+)$/m);
+  if (proxyMatch) {
+    const proxyUrl = proxyMatch[1].trim().replace(/['"]/g, '');
+    console.log(`[main] Setting global proxy from config: ${proxyUrl}`);
+    process.env.HTTP_PROXY = proxyUrl;
+    process.env.HTTPS_PROXY = proxyUrl;
+    process.env.CTI_HTTPS_PROXY = proxyUrl;
+    // Undici respects these environment variables
+    process.env.UNDICI_HTTP_PROXY = proxyUrl;
+    process.env.UNDICI_HTTPS_PROXY = proxyUrl;
+  }
+} catch (err) {
+  // Config file might not exist, that's OK
+}
 
 import { initBridgeContext } from 'claude-to-im/src/lib/bridge/context.js';
 import * as bridgeManager from 'claude-to-im/src/lib/bridge/bridge-manager.js';
 // Side-effect import to trigger adapter self-registration
 import 'claude-to-im/src/lib/bridge/adapters/index.js';
+// Note: Using undici environment variables for proxy (UNDICI_HTTP_PROXY, UNDICI_HTTPS_PROXY)
+// instead of calling setGlobalDispatcher explicitly
 
 import type { LLMProvider } from 'claude-to-im/src/lib/bridge/host.js';
 import { loadConfig, configToSettings, CTI_HOME } from './config.js';
